@@ -1,0 +1,11 @@
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+url <- "https://api.worldbank.org/v2/country/all/indicator/AG.LND.FRST.ZS?format=json&date=1990:2026&per_page=20000"
+raw <- fromJSON(url)
+stopifnot(raw[[1]]$pages == 1)
+d <- raw[[2]] |> transmute(country=countryiso3code, year=as.integer(date), forest=value) |> filter(!is.na(forest), country %in% c("PAK","IND","BGD","NPL","LKA","BTN")) |> arrange(country,year) |> group_by(country) |> mutate(change=if_else(year-lag(year)==1,forest-lag(forest),NA_real_))
+stopifnot(nrow(d)>0)
+dir.create("outputs",showWarnings=FALSE)
+write.csv(d,"outputs/south_asia_forest.csv",row.names=FALSE)
+ggsave("outputs/forest.png",ggplot(d,aes(year,forest,colour=country))+geom_line()+theme_minimal()+labs(y="Forest share (%)"),width=10,height=6)
